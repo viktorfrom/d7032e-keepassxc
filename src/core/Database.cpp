@@ -717,7 +717,7 @@ void Database::recycleGroup(Group* group)
 void Database::emptyRecycleBin()
 {
     Q_ASSERT(!m_data.isReadOnly);
-    if (m_metadata->recycleBinEnabled() && m_metadata->recycleBin()) {
+    if (m_metadata->recycleBin()) {
         // destroying direct entries of the recycle bin
         QList<Entry*> subEntries = m_metadata->recycleBin()->entries();
         for (Entry* entry : subEntries) {
@@ -728,15 +728,6 @@ void Database::emptyRecycleBin()
         for (Group* group : subGroups) {
             delete group;
         }
-    } else if (!m_metadata->recycleBinEnabled() && m_metadata->recycleBin()) {
-        // destroying direct entries of the recycle bin
-        QList<Entry*> subEntries = m_metadata->recycleBin()->entries();
-        for (Entry* entry : subEntries) {
-            delete entry;
-        }
-        // destroys the recycle bin group
-        Group* group = metadata()->recycleBin();
-        delete group;
     }
 }
 
