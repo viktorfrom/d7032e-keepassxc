@@ -23,6 +23,7 @@
 #include "core/Entry.h"
 #include "core/Group.h"
 #include "core/Metadata.h"
+#include "gui/MessageBox.h"
 
 DatabaseSettingsWidgetGeneral::DatabaseSettingsWidgetGeneral(QWidget* parent)
     : DatabaseSettingsWidget(parent)
@@ -77,9 +78,37 @@ void DatabaseSettingsWidgetGeneral::showEvent(QShowEvent* event)
 
 bool DatabaseSettingsWidgetGeneral::save()
 {
+    Metadata* meta = m_db->metadata();
+
+    // program crashes if the recycle bin is deleted twice
+    // must be due to the following code deleting the wrong pointer (that does not exist?)
+    if (!m_ui->recycleBinEnabledCheckBox->isChecked() && meta->recycleBinEnabled() && meta->recycleBin()) {
+        auto result =
+            MessageBox::question(this,
+                                 tr("Move or delete recycle bin?"),
+                                 tr("By disabling the recycle bin you can either move its contents to a new group, or "
+                                    "delete it all permanently. Do you want to move or delete the recycle bin?"),
+                                 MessageBox::Cancel | MessageBox::Move | MessageBox::Delete,
+                                 MessageBox::Cancel);
+
+        auto* recycleBin = meta->recycleBin();
+
+        if (result == MessageBox::Delete) {
+            delete recycleBin;
+        } else if (result == MessageBox::Move) {
+            Group* newGroup = recycleBin->clone();
+            newGroup->setName(tr("Old recycle bin"));
+            newGroup->setIcon(Group::DefaultIconNumber);
+            newGroup->setParent(m_db->rootGroup());
+            delete recycleBin;
+        } else {
+            m_ui->recycleBinEnabledCheckBox->setChecked(true);
+            return false;
+        }
+    }
+
     m_db->setCompressionAlgorithm(m_ui->compressionCheckbox->isChecked() ? Database::CompressionGZip
                                                                          : Database::CompressionNone);
-    Metadata* meta = m_db->metadata();
 
     meta->setName(m_ui->dbNameEdit->text());
     meta->setDescription(m_ui->dbDescriptionEdit->text());
